@@ -61,6 +61,7 @@
     </style>
 </head>
 <body>
+<button onclick="loadMoreMessages()" style="width: 100%;">Load more messages</button>
 <ul id="messages"></ul>
 <form id="form" action="">
     <input id="input" autocomplete="off"/>
@@ -70,6 +71,7 @@
 <script>
     let counter = 0;
     let lastMessageId = null;
+    let messagesArr = [];
     const socket = io({
         auth: {
             serverOffset: 0
@@ -89,30 +91,51 @@
         e.preventDefault();
         if (input.value) {
             const clientOffset = `${socket.id}-${counter++}`;
-            socket.emit('send msg', {name: username, message: input.value}, room, clientOffset);
-            const item = document.createElement('li');
-            item.style.textAlign = 'right';
-            item.textContent = `${input.value}`;
-            messages.appendChild(item);
-            window.scrollTo(0, document.body.scrollHeight);
-            input.value = '';
+            var message = {
+                name: username,
+                message: input.value,
+                timestamp: new Date().toISOString().slice(0, 19).replace('T', ' ')
+            }
+            socket.emit('send msg', message, room, clientOffset);
+            messagesArr.push(message);
+            renderMessages();
         }
     });
 
-    socket.on('receive msg', ({name: name, message: msg}, serverOffset) => {
-        const item = document.createElement('li');
-        if (name === 'admin') {
-            item.style.textAlign = 'center';
-        } else if (name === username) {
-            item.style.textAlign = 'right';
-        } else {
-            item.style.textAlign = 'left';
-        }
-        item.textContent = `${name}: ${msg}`;
-        messages.appendChild(item);
-        window.scrollTo(0, document.body.scrollHeight);
-        socket.auth.serverOffset = serverOffset;
+    socket.on('load more messages', (messages) => {
+        messagesArr = messages.concat(messagesArr).filter((msg, index, self) =>
+            index === self.findIndex((m) => (
+                m.id === msg.id
+            ))
+        );
+        renderMessages();
     });
+
+    function loadMoreMessages() {
+        if (lastMessageId && room) {
+            socket.emit('load more messages', {room: room, lastMessageId: lastMessageId});
+        }
+    }
+
+    function renderMessages() {
+        messages.innerHTML = '';
+        messagesArr.sort((a, b) => a.id - b.id).forEach((msg) => {
+            const item = document.createElement('li');
+            item.textContent = `${msg.name}: ${msg.message}`;
+            item.title = msg.timestamp;
+            if(msg.name === username) {
+                item.style.textAlign = 'right';
+            } else if (msg.name === 'System') {
+                item.style.fontWeight = 'bold';
+                item.style.textAlign = 'center';
+            } else {
+                item.style.textAlign = 'left';
+            }
+            messages.appendChild(item);
+        });
+        lastMessageId = messagesArr[0].id;
+        window.scrollTo(0, document.body.scrollHeight);
+    }
 </script>
 </body>
 </html>

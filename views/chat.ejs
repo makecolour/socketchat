@@ -157,10 +157,11 @@
             };
 
             $scope.loadMoreMessages = function () {
-                if (lastMessageId) {
+                if (lastMessageId && $scope.room) {
                     socket.emit('load more messages', {room: $scope.room, lastMessageId: lastMessageId});
                 }
             };
+
             socket.on('load more messages', function (messages) {
                 $scope.$apply(function () {
                     $scope.messages = messages.concat($scope.messages).filter((message, index, self) =>
@@ -170,6 +171,7 @@
                     lastMessageId = $scope.messages[0].id;
                 });
             });
+
             $scope.scrollToBottom = function () {
                 setTimeout(() => {
                     const chatWindow = document.querySelector('.chat-window');
@@ -194,9 +196,11 @@
                     $scope.room = '';
                 });
             };
+
             $scope.checkEnter = function (event, element) {
                 if (event.key === 'Enter') {
                     $scope.sendMessage(element);
+                    element = '';
                 }
             };
         });

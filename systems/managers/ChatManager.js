@@ -31,11 +31,15 @@ module.exports = (io, db) => {
             if (!socket.rooms.has(room)) {
                 socket.join(room);
                 socket.username = username;
+                var limit = 20;
+                if(room === 'general' || room === 'chat') {
+                    limit = 50;
+                }
                 console.log(`user ${username} joined room: ${room}`);
                 try {
                     const [rows] = await db.promise().query(
-                        'SELECT id, message, room, username, timestamp FROM chat WHERE room = ? ORDER BY id DESC LIMIT 20',
-                        [room]
+                        'SELECT id, message, room, username, timestamp FROM chat WHERE room = ? ORDER BY id DESC LIMIT ?',
+                        [room, limit]
                     );
                     receiveMessages(rows, room)
                 } catch (e) {
@@ -70,10 +74,14 @@ module.exports = (io, db) => {
         socket.on('load more messages', async ({room, lastMessageId}) => {
             if (isLoadingMoreMessages) return;
             isLoadingMoreMessages = true;
+            var limit = 20;
+            if(room === 'general' || room === 'chat') {
+                limit = 50;
+            }
             try {
                 const [rows] = await db.promise().query(
-                    'SELECT id, message, room, username, timestamp FROM chat WHERE room = ? AND id < ? ORDER BY id DESC LIMIT 20',
-                    [room, lastMessageId]
+                    'SELECT id, message, room, username, timestamp FROM chat WHERE room = ? AND id < ? ORDER BY id DESC LIMIT ?',
+                    [room, lastMessageId, limit]
                 );
                 receiveMessages(rows, room, 'view');
             } catch (e) {

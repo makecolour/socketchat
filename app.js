@@ -11,7 +11,7 @@ var usersRouter = require('./routes/users');
 const {createServer} = require('node:http');
 const {Server} = require('socket.io');
 
-const db = require('./systems/managers/UserManager.js'); // Import the db module
+const db = require('./systems/managers/UserManager.js');
 
 var app = express();
 
