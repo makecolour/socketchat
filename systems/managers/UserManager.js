@@ -48,4 +48,44 @@ db.connect((err) => {
     });
 });
 
+db.getMessages = async (room, limit = 50, lastMessageId = null) => {
+    let rows;
+    try {
+        if (lastMessageId) {
+            [rows] = await db.promise().query(
+                'SELECT id, message, room, username, timestamp FROM chat WHERE room = ? AND id < ? ORDER BY id DESC LIMIT ?',
+                [room, lastMessageId, limit]
+            );
+        } else {
+            [rows] = await db.promise().query(
+                'SELECT id, message, room, username, timestamp FROM chat WHERE room = ? ORDER BY id DESC LIMIT ?',
+                [room, limit]
+            );
+        }
+    } catch (e) {
+        if (e.errno === 1062) {
+            return;
+        } else {
+            console.error('Error getting messages:', e);
+            return;
+        }
+    }
+    return rows;
+};
+
+db.insertMessage = async (clientOffset, username, message, room, timestamp) => {
+    let result;
+    try {
+        result = await db.promise().query('INSERT INTO chat (client_offset, username, message, room, timestamp) VALUES (?, ?, ?, ?, ?)', [clientOffset, username, message, room, timestamp]);
+    } catch (e) {
+        if (e.errno === 1062) {
+            return;
+        } else {
+            console.error('Error inserting message:', e);
+            return;
+        }
+    }
+    return result;
+}
+
 module.exports = db;

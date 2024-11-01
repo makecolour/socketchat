@@ -3,62 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title><%= title %></title>
-    <style>
-        body {
-            margin: 0;
-            padding-bottom: 3rem;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        #form {
-            background: rgba(0, 0, 0, 0.15);
-            padding: 0.25rem;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            display: flex;
-            height: 3rem;
-            box-sizing: border-box;
-            backdrop-filter: blur(10px);
-        }
-
-        #input {
-            border: none;
-            padding: 0 1rem;
-            flex-grow: 1;
-            border-radius: 2rem;
-            margin: 0.25rem;
-        }
-
-        #input:focus {
-            outline: none;
-        }
-
-        #form > button {
-            background: #333;
-            border: none;
-            padding: 0 1rem;
-            margin: 0.25rem;
-            border-radius: 3px;
-            outline: none;
-            color: #fff;
-        }
-
-        #messages {
-            list-style-type: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        #messages > li {
-            padding: 0.5rem 1rem;
-        }
-
-        #messages > li:nth-child(odd) {
-            background: #efefef;
-        }
-    </style>
+    <link rel="stylesheet" type="text/css" href="/stylesheets/index.css">
 </head>
 <body>
 <button onclick="loadMoreMessages()" style="width: 100%;">Load more messages</button>
@@ -68,74 +13,6 @@
     <button>Send</button>
 </form>
 <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
-<script>
-    let counter = 0;
-    let lastMessageId = null;
-    let messagesArr = [];
-    const socket = io({
-        auth: {
-            serverOffset: 0
-        },
-        ackTimeout: 500,
-        retries: 10,
-    });
-    const form = document.getElementById('form');
-    const input = document.getElementById('input');
-    const messages = document.getElementById('messages');
-    const username = prompt("Enter your username");
-    const room = 'chat';
-
-    socket.emit('join room', {name: username, room: room});
-
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (input.value) {
-            const clientOffset = `${socket.id}-${counter++}`;
-            var message = {
-                name: username,
-                message: input.value,
-                timestamp: new Date().toISOString().slice(0, 19).replace('T', ' ')
-            }
-            socket.emit('send msg', message, room, clientOffset);
-            messagesArr.push(message);
-            renderMessages();
-        }
-    });
-
-    socket.on('load more messages', (messages) => {
-        messagesArr = messages.concat(messagesArr).filter((msg, index, self) =>
-            index === self.findIndex((m) => (
-                m.id === msg.id
-            ))
-        );
-        renderMessages();
-    });
-
-    function loadMoreMessages() {
-        if (lastMessageId && room) {
-            socket.emit('load more messages', {room: room, lastMessageId: lastMessageId});
-        }
-    }
-
-    function renderMessages() {
-        messages.innerHTML = '';
-        messagesArr.sort((a, b) => a.id - b.id).forEach((msg) => {
-            const item = document.createElement('li');
-            item.textContent = `${msg.name}: ${msg.message}`;
-            item.title = msg.timestamp;
-            if(msg.name === username) {
-                item.style.textAlign = 'right';
-            } else if (msg.name === 'System') {
-                item.style.fontWeight = 'bold';
-                item.style.textAlign = 'center';
-            } else {
-                item.style.textAlign = 'left';
-            }
-            messages.appendChild(item);
-        });
-        lastMessageId = messagesArr[0].id;
-        window.scrollTo(0, document.body.scrollHeight);
-    }
-</script>
+<script src="/javascripts/index.js"></script>
 </body>
 </html>

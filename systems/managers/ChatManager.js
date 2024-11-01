@@ -4,6 +4,8 @@ module.exports = (io, db) => {
             console.log(`user ${socket.username} disconnected due to: ${reason}`);
         });
 
+        let isLoadingMoreMessages = false;
+
         function receiveMessages(rows, room = 'general', mode = 'view') {
             switch (mode) {
                 case "view":
@@ -32,63 +34,40 @@ module.exports = (io, db) => {
                 socket.join(room);
                 socket.username = username;
                 var limit = 20;
-                if(room === 'general' || room === 'chat') {
+                if (room === 'general' || room === 'chat') {
                     limit = 50;
                 }
                 console.log(`user ${username} joined room: ${room}`);
-                try {
-                    const [rows] = await db.promise().query(
-                        'SELECT id, message, room, username, timestamp FROM chat WHERE room = ? ORDER BY id DESC LIMIT ?',
-                        [room, limit]
-                    );
-                    receiveMessages(rows, room)
-                } catch (e) {
-                    console.error('Error fetching messages:', e);
-                }
+                isLoadingMoreMessages = true;
+                let rows = await db.getMessages(room, limit);
+                receiveMessages(rows, room, 'view');
+                isLoadingMoreMessages = false;
             }
         });
 
         socket.on('send msg', async ({name: username, message: msg, timestamp: time}, room, clientOffset) => {
-            let result;
-            try {
-                result = await db.promise().query('INSERT INTO chat (client_offset, username, message, room, timestamp) VALUES (?, ?, ?, ?, ?)', [clientOffset, username, msg, room, time]);
-            } catch (e) {
-                if (e.errno === 1062) {
-                    return;
-                } else {
-                    console.error('Error inserting message:', e);
-                    return;
-                }
+            let result = await db.insertMessage(clientOffset, username, msg, room, time);
+            if (result && result[0] && result[0].insertId) {
+                var newMessages = [{
+                    username: username,
+                    message: msg,
+                    id: result[0].insertId,
+                    timestamp: time
+                }];
+                receiveMessages(newMessages, room, 'send');
             }
-            var newMessages = [{
-                name: username,
-                message: msg,
-                id: result[0].insertId,
-                timestamp: time
-            }]
-            receiveMessages(newMessages, room, 'send');
         });
-
-        let isLoadingMoreMessages = false;
 
         socket.on('load more messages', async ({room, lastMessageId}) => {
             if (isLoadingMoreMessages) return;
             isLoadingMoreMessages = true;
             var limit = 20;
-            if(room === 'general' || room === 'chat') {
+            if (room === 'general' || room === 'chat') {
                 limit = 50;
             }
-            try {
-                const [rows] = await db.promise().query(
-                    'SELECT id, message, room, username, timestamp FROM chat WHERE room = ? AND id < ? ORDER BY id DESC LIMIT ?',
-                    [room, lastMessageId, limit]
-                );
-                receiveMessages(rows, room, 'view');
-            } catch (e) {
-                console.error('Error fetching more messages:', e);
-            } finally {
-                isLoadingMoreMessages = false;
-            }
+            let rows = await db.getMessages(room, limit, lastMessageId);
+            receiveMessages(rows, room, 'view');
+            isLoadingMoreMessages = false;
         });
 
         socket.on('leave room', (room) => {
