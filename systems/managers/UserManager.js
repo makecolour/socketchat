@@ -86,6 +86,6 @@ db.insertMessage = async (clientOffset, username, message, room, timestamp) => {
         }
     }
     return result;
-}
+};
 
 module.exports = db;
