@@ -7,6 +7,7 @@ module.exports = (io, db) => {
         let isLoadingMoreMessages = false;
 
         function receiveMessages(rows, room = 'general', mode = 'view') {
+            if(!rows || !rows.length) return;
             switch (mode) {
                 case "view":
                     socket.emit('load more messages', rows.map(row => ({
